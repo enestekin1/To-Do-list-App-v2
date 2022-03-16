@@ -89,7 +89,7 @@ app.post("/", function (req, res) {
             name: item
         })
         addItem.save()
-        res.redirect("/add/" + listName)
+        res.redirect("/" + listName)
     }
 })
 
@@ -117,7 +117,7 @@ app.post("/delete", function (req, res) {
             console.log(err);
         } else {
             console.log("Item has been removed");
-            res.redirect("/add/"+ listName)
+            res.redirect("/"+ listName)
         }
     })
     }
@@ -134,7 +134,7 @@ app.get("/add/:post", function (req, res) {
             createdCollection.insertMany(defaultItems, function (err) {
                 console.log(err);
             })
-            res.redirect("/add/" + requestedParam)
+            res.redirect("/" + requestedParam)
         } else {
             res.render("list", {
                 title: requestedParam,
