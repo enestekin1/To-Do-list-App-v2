@@ -35,7 +35,11 @@ const item3 = new Item({
     name: "Check the checkbox to delete an item"
 })
 
-const defaultItems = [item1, item2, item3]
+const item4 = new Item({
+    name: "You can type anything you want at the end of the url (e.g: /Work) to create your own list page"
+})
+
+const defaultItems = [item1, item2, item3,item4]
 
 const listSchema = {
     name: String
