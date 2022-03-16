@@ -124,7 +124,7 @@ app.post("/delete", function (req, res) {
 })        
 
 
-app.get("/add/:post", function (req, res) {
+app.get("/:post", function (req, res) {
     const requestedParam = req.params.post
 
     const createdCollection = mongoose.model(requestedParam, itemsSchema)
