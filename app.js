@@ -76,7 +76,7 @@ const item4 = new Item({
 
 const defaultItems = [item1, item2, item3,item4]
 
-app.listen(3000, function () {
+app.listen(process.env.PORT, function () {
     console.log("Server has started")
 })
 
