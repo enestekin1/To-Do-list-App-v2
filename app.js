@@ -1,8 +1,13 @@
+require('dotenv').config();
 const express = require("express")
 const bodyParser = require("body-parser")
 const ejs = require("ejs")
 const path = require("path")
 const mongoose = require("mongoose")
+const session= require("express-session")
+const passport= require("passport")
+const passportLocalMongoose= require("passport-local-mongoose")
+
 
 const app = express();
 app.use(bodyParser.urlencoded({
@@ -14,14 +19,44 @@ app.use(express.static("public"))
 app.set('views', path.join(__dirname, 'views'));
 app.set("view engine", "ejs")
 
+//Authentication setup
+  app.use(session({
+    secret: process.env.SECRET,
+    resave: false,
+    saveUninitialized: false,
+  }))
+ 
+app.use(passport.initialize())
+app.use(passport.session())
 
 mongoose.connect("mongodb+srv://enestekin1:enestekin1@cluster0.p9v6i.mongodb.net/todoListDB");
+// mongoose.connect('mongodb://localhost:27017/todoListDB');
 
 const itemsSchema = new mongoose.Schema({
-    name: String
+    name: String,
 })
 
+const userSchema= new mongoose.Schema({
+    email: String,
+    password: String,
+    items: [itemsSchema]
+})
+const listSchema = {
+    name: String
+}
+
+userSchema.plugin(passportLocalMongoose) 
+
+
+const User= new mongoose.model("User", userSchema)
 const Item = mongoose.model("Item", itemsSchema)
+
+
+passport.use(User.createStrategy())
+
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
+
 
 const item1 = new Item({
     name: "Welcome to todolist app"
@@ -41,111 +76,91 @@ const item4 = new Item({
 
 const defaultItems = [item1, item2, item3,item4]
 
-const listSchema = {
-    name: String
-}
-
-var connection= mongoose.connection;
-
-
-
-var createdCollection = mongoose.model("", itemsSchema)
-
-
-
-
-app.listen(process.env.PORT, function () {
+app.listen(3000, function () {
     console.log("Server has started")
 })
 
+
 app.get("/", function (req, res) {
-    Item.find({}, function (err, foundItems) {
-        if (foundItems.length === 0) {
-            Item.insertMany(defaultItems, function (err) {
+    if(req.isAuthenticated()){
+        const userId= req.user.id
+        User.findOne({id: userId}, function(err,foundItems){
+            if(err){
                 console.log(err);
-            })
-            res.redirect("/")
-        } else {
+            }else{
+                if(foundItems.length===0){
 
-            res.render("list", {
-                title: "Today",
-                newListItems: foundItems
-            })
-        }
-    })
-
-})
-
-
-app.post("/", function (req, res) {
-    var item = req.body.formInput
-    const listName = req.body.addButton
-
-    if (listName === "Today") {
-        const addItem = new Item({
-            name: item
-        })
-        addItem.save()
-        res.redirect("/")
-    } else {
-        createdCollection = mongoose.model(listName, itemsSchema)
-        const addItem = new createdCollection({
-            name: item
-        })
-        addItem.save()
-        res.redirect("/" + listName)
-    }
-})
-
-
-app.post("/delete", function (req, res) {
-    const itemId = req.body.checkbox;
-    const listName = req.body.hiddenInput
-    const lowerListName= listName.toLowerCase();
-
-    if (listName === "Today") {
-        Item.findByIdAndRemove(itemId, function (err) {
-            if (err) {
-                console.log(err);
-            } else {
-                console.log("Item has been removed");
-                res.redirect("/")
+                }
+                res.render("home",{
+                    title: "Today",
+                    newListItems: foundItems.items
+                })
             }
         })
+    }else{
+        res.render("index")
+    }    
+})    
+
+app.post("/", function (req, res) {
+    const item = req.body.formInput
+    const userId= req.user.id
+
+    const addItem = {
+        name: item
     }
-    
-    else{
-    createdCollection = mongoose.model(listName, itemsSchema)
-    createdCollection.findByIdAndRemove(itemId, function (err) {
-        if (err) {
-            console.log(err);
-        } else {
-            console.log("Item has been removed");
-            res.redirect("/"+ listName)
-        }
-    })
-    }
-})        
-
-
-app.get("/:post", function (req, res) {
-    const requestedParam = req.params.post
-
-    const createdCollection = mongoose.model(requestedParam, itemsSchema)
-
-    createdCollection.find({}, function (err, foundItems) {
-        if (foundItems.length === 0) {
-            createdCollection.insertMany(defaultItems, function (err) {
-                console.log(err);
-            })
-            res.redirect("/" + requestedParam)
-        } else {
-            res.render("list", {
-                title: requestedParam,
-                newListItems: foundItems
-            })
-        }
-    })
-
-
+        User.findOne({id: userId}, function(err, foundItems){
+            foundItems.items.push(addItem)
+            foundItems.save()
+            res.redirect("/")
+        })
 })
+
+app.get("/login", function(req,res){
+    res.render("login")
+})
+
+app.post("/login" , function(req,res){
+    const user= new User({
+        username: req.body.username,
+        password: req.body.password
+    })
+    req.login(user, function(err){
+        if(err){
+            console.log(err);
+            res.redirect("/login")
+        }else{
+        passport.authenticate("local")(req,res,function(){
+            res.redirect("/") 
+        })
+    }
+})
+})
+app.get("/register", function(req,res){
+    res.render("register")
+})
+
+app.post("/register", function(req,res){
+    User.register({username: req.body.username}, req.body.password, function(err,user){
+        if(err){
+            console.log(err)
+            res.redirect("/register")
+        }else{
+            passport.authenticate("local")(req,res,function(){
+                res.redirect("/")
+            })
+        }
+    })
+})
+app.post("/delete", function (req, res) {
+    const itemId = req.body.checkbox;
+    const userId= req.user.id
+    
+    
+    User.findOne({id: userId}, function(err, foundItems){
+        const removeIndex = foundItems.items.findIndex( item => item.id === itemId );
+        foundItems.items.splice( removeIndex, 1 );
+        foundItems.save()
+        res.redirect("/")
+    })
+})   
