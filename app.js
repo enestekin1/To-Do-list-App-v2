@@ -29,7 +29,7 @@ app.set("view engine", "ejs")
 app.use(passport.initialize())
 app.use(passport.session())
 
-mongoose.connect("mongodb+srv://enestekin1:enestekin1@cluster0.p9v6i.mongodb.net/todoListDB");
+mongoose.connect("mongodb+srv://enestekin1:enestekin1@cluster0.fagi2.mongodb.net/todoListDB");
 // mongoose.connect('mongodb://localhost:27017/todoListDB');
 
 const itemsSchema = new mongoose.Schema({
